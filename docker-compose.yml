@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    volumes:
+      - bot-storage:/app/storage
+    restart: unless-stopped
+
+volumes:
+  bot-storage:
