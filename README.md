@@ -30,6 +30,7 @@ A Telegram token can be used by only one running bot instance at a time.
 | `LLM_MODEL` | no | main model, default `openai/gpt-oss-120b` |
 | `LLM_FALLBACK_MODEL` | no | comma-separated fallback models, tried in turn on rate limits, default `qwen/qwen3.8-27b,openai/gpt-oss-20b` |
 | `LLM_ROUTER_MODEL` | no | model for the message-understanding step, default `qwen/qwen3.8-27b` |
+| `LLM_REASONING_EFFORT` | no | reasoning effort for reasoning models, default `low` (comparisons use `medium`); empty to turn off, e.g. for Ollama |
 | `LLM_BASE_URL` | no | OpenAI-compatible endpoint (Groq by default; a local Ollama can be used) |
 
 On first start the bot loads the "Forest Archive" from `data/archive` (78 documents; 19 scans are recognised via
@@ -39,7 +40,8 @@ Tesseract, which takes about a minute). The database is kept in the Docker volum
 
 - **Question**: any text, e.g. "When are the dues for Under the Oak payable?", "What to do in case of fire?".
 - **New document**: send a PDF, .docx or .txt. A new version of a document for the same place replaces the old one.
-- `/docs`: all documents grouped by place; `/my`: my documents (these can be deleted).
+- `/docs`: all documents grouped by place; `/my`: my documents (these can be deleted). Deleting a new version
+  brings back the version it replaced, so an archive document cannot be removed by replacing it.
 
 ## How it works
 
@@ -64,6 +66,34 @@ animal's own place.
 - **Groq limits**: two requests per question, on different models (Groq limits are per model); on a 429 the bot
   switches to a fallback model. If the understanding step is unavailable, plain search is used.
 
+## Design decisions and trade-offs
+
+- **Why not put the whole archive into one prompt.** The archive is small (about 50 thousand characters), and
+  a model with a large context could read all of it at once. But the free Groq tier allows 8,000 tokens per minute
+  per model, and one question already takes about 3,500. So the bot selects up to 8 documents (11 for
+  comparisons). With a paid model, most of the selection logic could be dropped.
+- **Why two models.** Understanding a message (follow-ups, the animals' own words, place, chat or question)
+  is a simpler task than a careful answer, and Groq counts limits per model: the light model takes this step
+  and the main model's limit is kept for answers. The same pattern (query rewriting before retrieval) is common
+  in RAG systems.
+- **Why BM25 and not embeddings.** Groq has no embedding models, the corpus is tiny, and the understanding step
+  already expands the query with synonyms in the documents' terms. The LLM also picks documents from the
+  catalogue by title, which covers the cases where words do not match at all.
+- **Why rules before the LLM for "who a document is for".** The client asked not to guess. Explicit phrases
+  ("для мешканців хвойного лісу", a mitten in the title) are found deterministically and covered by tests on all
+  78 archive documents; the LLM only handles the rest, and is told to answer "unknown" when unsure. For an
+  uploaded document, "unknown" means the bot asks the sender. An archive document has no sender, so if one were
+  unclear it would be treated as advice for the whole forest (with a warning in the log); none currently is.
+- **Known limitations.**
+  - Comparisons gather the same kind of document for every mitten by similar titles ("Членські внески
+    рукавички …"), so they rely on documents being named alike.
+  - A question whose answer is spread across several kinds of documents (e.g. "where do most animals
+    hibernate?") may get an incomplete answer. Sending relevant paragraphs instead of whole documents would fix
+    this within the same token limit.
+  - The free tier handles about 3 questions per minute and about 50 answers per day on the main model; after
+    that the fallback models answer.
+  - Conversations are kept in memory and are lost on restart; documents are kept in SQLite.
+
 ## Tests
 
 ```bash
@@ -71,4 +101,4 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The tests check the classification of all 78 archive documents, place detection in questions, advice priorities and search.
+The tests check the classification of all 78 archive documents, place detection in questions, advice priorities, search, LLM fallbacks on rate limits and restoring a replaced document on deletion.

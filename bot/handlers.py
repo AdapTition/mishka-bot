@@ -29,7 +29,7 @@ router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 MAX_FILE_BYTES = 20 * 1024 * 1024  # Telegram does not give bots files larger than this
 SESSION_TTL = 30 * 60
-HISTORY_TURNS = 6
+HISTORY_MESSAGES = 6  # 3 question-answer exchanges: history goes into every understanding request
 
 HELLO = (
     "Привіт! Я Мишка-довідник лісу 🐭\n\n"
@@ -54,7 +54,7 @@ class Sessions:
         return [(role, text) for role, text, ts in self._history.get(chat_id, ()) if now - ts < SESSION_TTL]
 
     def add(self, chat_id: int, role: str, text: str) -> None:
-        self._history.setdefault(chat_id, deque(maxlen=HISTORY_TURNS)).append((role, text[:400], time.time()))
+        self._history.setdefault(chat_id, deque(maxlen=HISTORY_MESSAGES)).append((role, text[:400], time.time()))
 
     def set_pending(self, chat_id: int, question: str) -> None:
         self._pending[chat_id] = question
@@ -156,8 +156,11 @@ async def on_delete(callback: CallbackQuery, store: Store) -> None:
     if not doc or doc.uploader_id != callback.from_user.id or doc.status not in ("active", "pending"):
         await callback.answer("Видалити можна лише свій документ.", show_alert=True)
         return
-    store.set_status(doc.id, "deleted")
-    await callback.message.edit_text(f"🗑 Документ «{doc.title}» видалено.")
+    restored = store.delete(doc.id)
+    text = f"🗑 Документ «{doc.title}» видалено."
+    if restored:
+        text += f"\nПовернула попередню версію: «{restored.title}»."
+    await callback.message.edit_text(text)
     await callback.answer()
 
 

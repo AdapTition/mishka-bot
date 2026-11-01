@@ -34,7 +34,7 @@ so names of places and documents are kept in Ukrainian with a translation where 
 
 ## Developer decisions (Mishka asked me to decide and report back)
 - **Who is asking.** No registration. If the answer depends on the mitten and it is not named, the bot asks and offers buttons with the mittens. If an animal is named in the question ("How much does Bunny pay?"), the place is determined from the documents.
-- **Conversation.** The bot remembers the last 6 turns (30 minutes) and understands follow-ups ("and in winter?"). Greetings, thanks and comments are not treated as questions.
+- **Conversation.** The bot remembers the last 6 messages, i.e. 3 question-answer exchanges (30 minutes) and understands follow-ups ("and in winter?"). Greetings, thanks and comments are not treated as questions.
 - **No answer.** The bot answers only from the documents. If there is no advice, it honestly says so and invents nothing.
 - **Date.** The bot knows today's date and weekday (Europe/Kyiv) and uses them for "today" or "tomorrow". It does not invent what it cannot know (weather, state of the dam), but reminds of the rule.
 - **Deletion.** An animal can delete only a document it sent itself. Archive documents cannot be deleted.

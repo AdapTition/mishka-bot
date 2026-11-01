@@ -116,3 +116,14 @@ class Store:
             "UPDATE documents SET status = ?, replaced_by = ? WHERE id = ?", (status, replaced_by, doc_id)
         )
         self.conn.commit()
+
+    def delete(self, doc_id: int) -> Document | None:
+        """Deletes a document and brings back the version it replaced, if any; returns that version."""
+        row = self.conn.execute(
+            "SELECT * FROM documents WHERE replaced_by = ? AND status = 'replaced'", (doc_id,)
+        ).fetchone()
+        self.set_status(doc_id, "deleted")
+        if not row:
+            return None
+        self.set_status(row["id"], "active")
+        return self.get(row["id"])
