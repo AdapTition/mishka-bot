@@ -60,7 +60,7 @@ animal's own place.
   Edge" to none. Advice for a mitten outranks advice for a forest part, which outranks general advice.
 - **Who a document is for** (`bot/scope.py`): explicit cues in the title and intro first (rules), then the LLM.
   If it is unclear, the bot asks the sender with buttons and does not guess.
-- **Scans** (`bot/extract.py`): PDF pages without a text layer are rendered and recognised by Tesseract (`ukr`).
+- **Scans** (`bot/extract.py`): PDF pages without a text layer are rendered and recognised by Tesseract (`ukr+eng`, so digits are not read as Cyrillic letters).
   Background is cut off by a threshold, junk lines are dropped.
 - **Version replacement**: same audience + similar title; in doubtful cases the LLM decides.
 - **Groq limits**: two requests per question, on different models (Groq limits are per model); on a 429 the bot
@@ -70,7 +70,7 @@ animal's own place.
 
 - **Why not put the whole archive into one prompt.** The archive is small (about 50 thousand characters), and
   a model with a large context could read all of it at once. But the free Groq tier allows 8,000 tokens per minute
-  per model, and one question already takes about 3,500. So the bot selects up to 8 documents (11 for
+  per model, and each of the two steps of a question already takes about 3,500 tokens. So the bot selects up to 8 documents (11 for
   comparisons). With a paid model, most of the selection logic could be dropped.
 - **Why two models.** Understanding a message (follow-ups, the animals' own words, place, chat or question)
   is a simpler task than a careful answer, and Groq counts limits per model: the light model takes this step
@@ -92,6 +92,9 @@ animal's own place.
     this within the same token limit.
   - The free tier handles about 3 questions per minute and about 50 answers per day on the main model; after
     that the fallback models answer.
+  - When a mitten has its own document on a topic, the bot answers from it and may leave out the advice of its
+    forest parts. For "Під вербою" this means the deciduous-forest and river advice is not always shown next to
+    it ([screenshot 03](docs/screenshots/03-edge-willow-beaver.jpg), dangers).
   - Conversations are kept in memory and are lost on restart; documents are kept in SQLite.
 
 ## Tests
@@ -110,7 +113,7 @@ Screenshots from a run of the bot (the tester's name is hidden; the "@" shows wh
 | Scenario | Screenshot |
 |---|---|
 | Answer with a source; place not named, so the bot asks for the mitten | [01](docs/screenshots/01-fire-and-place-buttons.jpg) |
-| Follow-up ("А в дубах?"); mitten advice first, then the forest part and the whole forest | [02](docs/screenshots/02-follow-up-and-priority.jpg) |
+| Follow-up ("А в дубах?"); advice for the mitten's forest part, the general calendar added | [02](docs/screenshots/02-follow-up-and-priority.jpg) |
 | Mitten with no forest part (На узліссі); the place found from an animal's name ("Скільки платить бобер?") | [03](docs/screenshots/03-edge-willow-beaver.jpg) |
 | Comparing all mittens (dues in different units, residents' meetings) | [04](docs/screenshots/04-comparison-fees.jpg), [05](docs/screenshots/05-comparison-meetings.jpg) |
 | Today's weekday for the ford rule; no invented answer; prompt-injection attempts | [06](docs/screenshots/06-date-and-provocations.jpg) |
