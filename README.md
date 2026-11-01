@@ -102,3 +102,30 @@ pytest
 ```
 
 The tests check the classification of all 78 archive documents, place detection in questions, advice priorities, search, LLM fallbacks on rate limits and restoring a replaced document on deletion.
+
+## Manual testing in Telegram
+
+Screenshots from a run of the bot (the tester's name is hidden; the "@" shows where the bot names the sender).
+
+| Scenario | Screenshot |
+|---|---|
+| Answer with a source; place not named, so the bot asks for the mitten | [01](docs/screenshots/01-fire-and-place-buttons.jpg) |
+| Follow-up ("А в дубах?"); mitten advice first, then the forest part and the whole forest | [02](docs/screenshots/02-follow-up-and-priority.jpg) |
+| Mitten with no forest part (На узліссі); the place found from an animal's name ("Скільки платить бобер?") | [03](docs/screenshots/03-edge-willow-beaver.jpg) |
+| Comparing all mittens (dues in different units, residents' meetings) | [04](docs/screenshots/04-comparison-fees.jpg), [05](docs/screenshots/05-comparison-meetings.jpg) |
+| Today's weekday for the ford rule; no invented answer; prompt-injection attempts | [06](docs/screenshots/06-date-and-provocations.jpg) |
+| Unclear document: the bot asks the sender instead of guessing | [07](docs/screenshots/07-unclear-document-asks-sender.jpg), [08](docs/screenshots/08-unclear-document-added.jpg) |
+| Word document, the sender is named in the sources | [09](docs/screenshots/09-docx-upload.jpg) |
+| A new version replaces the old one; deleting it brings the old one back | [10](docs/screenshots/10-new-version-replaces-old.jpg), [11](docs/screenshots/11-delete-restores-old-version.jpg) |
+
+### Found during testing and fixed
+
+- **Deleting a new version lost the archive document.** After deleting the replacement the old version stayed
+  hidden, and the bot said there was no information about dues ([before](docs/screenshots/bug-1-before-fix-delete-lost-archive-doc.png),
+  [after](docs/screenshots/11-delete-restores-old-version.jpg)). Deletion now brings back the replaced version;
+  covered by `tests/test_storage.py`.
+- **After choosing a mitten with the buttons, the answer listed all mittens again**
+  ([before](docs/screenshots/bug-2-before-fix-chosen-mitten-lists-all.jpg),
+  [after](docs/screenshots/12-chosen-mitten-answer.png)). The history held a list over all
+  mittens, so the understanding step took the question for a comparison. A chosen mitten now always turns
+  comparison mode off; covered by `test_chosen_mitten_is_not_answered_as_comparison`.

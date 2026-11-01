@@ -91,3 +91,42 @@ def test_forest_wide_question_is_not_flooded_with_mitten_documents():
 def test_catalog_choice_used_when_words_do_not_match():
     u = understanding("Хто чинить загату?", Target(), doc_ids=[1])
     assert [d.id for d in select_docs(u, DOCS)][0] == 1
+
+
+class ScriptedLLM:
+    """Understanding step answers with `understanding`; the answer step records its prompt."""
+
+    def __init__(self, understanding: dict):
+        self.understanding = understanding
+        self.answer_prompt = ""
+
+    async def json(self, system, user, max_tokens=2000, router=False, effort=None):
+        if router:
+            return self.understanding
+        self.answer_prompt = user
+        return {"need_place": False, "found": True, "answer": "2 шишки щотижня.", "sources": [10]}
+
+
+class FakeStore:
+    def __init__(self, docs):
+        self.docs = docs
+
+    def active(self):
+        return self.docs
+
+
+def test_chosen_mitten_is_not_answered_as_comparison():
+    # After the place buttons the history holds a list over all mittens, and the understanding step may call it a comparison.
+    import asyncio
+    from datetime import datetime
+    from bot.qa import respond
+
+    fees = [doc(10, "Членські внески рукавички У соснах", "2 шишки щотижня.", Audience(mittens=["У соснах"])),
+            doc(11, "Членські внески рукавички Під дубом", "4 жолуді на місяць.", Audience(mittens=["Під дубом"]))]
+    llm = ScriptedLLM({"kind": "question", "question": "Скільки треба платити внесків?", "compare": True,
+                       "mittens": [], "parts": [], "keywords": ["внески"], "doc_ids": [10, 11]})
+    answer = asyncio.run(respond("Скільки треба платити внесків?", [], FakeStore(fees), llm, datetime(2026, 11, 1),
+                                 forced_mitten="У соснах"))
+    assert "огляд по всіх: ні" in llm.answer_prompt
+    assert "Місце звіра: рукавичка «У соснах»" in llm.answer_prompt
+    assert [d.id for d in answer.sources] == [10]

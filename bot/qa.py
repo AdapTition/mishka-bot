@@ -260,7 +260,8 @@ async def respond(message: str, history: list[tuple[str, str]], store: Store, ll
     docs = store.active()
     u = await understand(message, history, docs, llm)
     if forced_mitten:
-        u.kind, u.target = "question", Target(mittens=[forced_mitten])
+        # The animal chose its mitten: answer for it, even if the history (a list over all mittens) looks like a comparison.
+        u.kind, u.target, u.compare = "question", Target(mittens=[forced_mitten]), False
     if u.kind == "chat":
         return Answer(u.reply or "Я тут 🐭 Питай про ліс — пошукаю в документах.")
 
